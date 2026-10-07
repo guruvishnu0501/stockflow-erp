@@ -47,12 +47,23 @@ app.include_router(api_router, prefix="/api")  # Compatibility alias
 
 @app.get("/health", tags=["Health"])
 @app.get("/api/health", tags=["Health"])
+@app.get("/api/v1/health", tags=["Health"])
 def health_check():
     return {
         "status": "healthy",
         "service": settings.PROJECT_NAME,
         "version": settings.VERSION
     }
+
+@app.get("/docs", include_in_schema=False)
+def docs_redirect():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/api/v1/docs")
+
+@app.get("/", include_in_schema=False)
+def root():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/api/v1/docs")
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
