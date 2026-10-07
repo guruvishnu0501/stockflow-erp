@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: stockflow_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-stockflow}
+      POSTGRES_USER: ${POSTGRES_USER:-stockflow_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-stockflow_secret_pass}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-stockflow_user} -d ${POSTGRES_DB:-stockflow}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: stockflow_backend
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-stockflow_user}:${POSTGRES_PASSWORD:-stockflow_secret_pass}@db:5432/${POSTGRES_DB:-stockflow}
+      - SECRET_KEY=${SECRET_KEY:-09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=480
+      - ENVIRONMENT=production
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: stockflow_frontend
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+    driver: local
